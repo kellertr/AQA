@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">AQA</string>
+    <string name="anonymous">Anonymous</string>
 </resources>

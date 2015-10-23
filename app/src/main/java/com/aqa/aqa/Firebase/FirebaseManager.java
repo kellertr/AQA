@@ -2,10 +2,14 @@ package com.aqa.aqa.Firebase;
 
 import android.content.Context;
 import android.provider.Settings;
+import android.util.Log;
 
+import com.firebase.client.DataSnapshot;
 import com.firebase.client.Firebase;
+import com.firebase.client.FirebaseError;
 import com.firebase.client.ValueEventListener;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import model.Classroom;
@@ -26,6 +30,10 @@ public class FirebaseManager {
     private String deviceId;
     private Context mContext;
     private Firebase firebase;
+
+    public interface LoadingCompleteListener<T>{
+        void handleResults(ArrayList<T> results);
+    }
 
     public static FirebaseManager get( Context context ){
         if( sFirebaseManager == null ){
@@ -49,8 +57,32 @@ public class FirebaseManager {
         resolvedFirebasePath.setValue(classroom, completionListener);
     }
 
-    public void listClassrooms( ValueEventListener listener ){
+    public void listClassrooms( final LoadingCompleteListener<Classroom> loadedListener ){
         Firebase resolvedClassroomRef = firebase.child(CLASSROOMS);
+
+        ValueEventListener listener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                Iterable<DataSnapshot> snapshotClassrooms = snapshot.getChildren();
+
+                ArrayList<Classroom> classrooms = new ArrayList<>();
+                for (DataSnapshot classroomSnapshot : snapshotClassrooms) {
+                    Classroom classroom = classroomSnapshot.getValue(Classroom.class);
+                    classroom.setClassRoomFirebaseId(classroomSnapshot.getKey());
+                    classrooms.add(classroom);
+                }
+
+                Log.d(TAG, "Classrooms:" + classrooms.toString());
+
+                loadedListener.handleResults(classrooms);
+            }
+
+            @Override
+            public void onCancelled(FirebaseError firebaseError) {
+                Log.e(TAG, "FirebaseError" + firebaseError);
+            }
+        };
+
         resolvedClassroomRef.addListenerForSingleValueEvent(listener);
     }
 
@@ -61,8 +93,32 @@ public class FirebaseManager {
         resolvedFirebasePath.setValue(q, listener);
     }
 
-    public void getQuestionsForClassroom( String classRoomId, ValueEventListener listener ){
+    public void getQuestionsForClassroom( String classRoomId, final LoadingCompleteListener<Question> loadedListener ){
         Firebase resolvedClassroomRef = firebase.child(QUESTIONS).child(classRoomId);
+
+        ValueEventListener listener = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                Iterable<DataSnapshot> snapshotQuestions = snapshot.getChildren();
+
+                ArrayList<Question> questions = new ArrayList<>();
+                for (DataSnapshot questionSnapshot : snapshotQuestions) {
+                    Question question = questionSnapshot.getValue(Question.class);
+                    question.setQuestionFireBaseId(questionSnapshot.getKey());
+                    questions.add(question);
+                }
+
+                Log.d(TAG, "Questions:" + questions.toString());
+
+                loadedListener.handleResults(questions);
+            }
+
+            @Override
+            public void onCancelled(FirebaseError firebaseError) {
+                Log.e(TAG, "FirebaseError" + firebaseError);
+            }
+        };
+
         resolvedClassroomRef.addListenerForSingleValueEvent(listener);
     }
 
